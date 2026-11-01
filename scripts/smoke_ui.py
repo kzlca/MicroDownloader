@@ -33,8 +33,14 @@ def main():
         seen = []
         original_dialog = ui.RecoveryDialog
 
-        class InterceptDialog:
+        class InterceptDialog(QDialog):
+            """Use an actual Qt widget so translate_tree tests the real dialog contract.
+
+            A plain Python mock lacks QWidget methods like setLayoutDirection,
+            which caused CI to fail before checking the Recover button.
+            """
             def __init__(self, path='', url='', parent=None):
+                super().__init__(parent)
                 assert isinstance(path, str), f'Recovery path must be str, not {type(path).__name__}'
                 seen.append((path, url))
 
@@ -109,10 +115,17 @@ def main():
                 window.task_menu = original_menu
             # Standalone transfer card tests height-driven wrapping at narrow widths.
             wrapped = ui.TransferRow(window.store.get(jid))
-            wrapped.resize(300, 400)
+            # Start wide and shrink after the layout has been constructed.
+            # This catches minimum-size feedback that previously prevented a
+            # card from shrinking and reflowing its action buttons.
+            wrapped.resize(820, 400)
             wrapped.show()
             app.processEvents()
-            assert wrapped._columns == 1, wrapped._columns
+            assert wrapped._columns == 4, (wrapped.width(), wrapped._columns)
+            wrapped.resize(300, 400)
+            app.processEvents()
+            assert wrapped.width() < 330, (wrapped.width(), wrapped.minimumSizeHint().width())
+            assert wrapped._columns == 1, (wrapped.width(), wrapped._columns)
             assert wrapped._height >= 300
             wrapped.close()
         finally:

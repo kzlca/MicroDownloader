@@ -129,7 +129,11 @@ class TransferRow(QFrame):
             btn = QPushButton(self.LABELS[key])
             btn.setCursor(Qt.PointingHandCursor)
             btn.setObjectName('danger' if key == 'remove' else 'cardAction')
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            # Horizontal Ignored is essential for responsive cards: Qt otherwise
+            # treats the text width of every button as a hard minimum for the
+            # entire grid, preventing the card from shrinking to one column.
+            btn.setMinimumWidth(0)
+            btn.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             btn.setFixedHeight(31)
             btn.clicked.connect(lambda checked=False, action=key: self.action_requested.emit(action))
             self.buttons[key] = btn
