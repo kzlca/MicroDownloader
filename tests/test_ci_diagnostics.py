@@ -31,6 +31,12 @@ class ReleaseDiagnosticsTests(unittest.TestCase):
         # plugin may lack a usable font database on Windows runners.
         self.assertIn("$env:QT_QPA_PLATFORM = 'windows'", release)
         self.assertIn('Windows native Qt/font availability probe', release)
+        # A PyInstaller --windowed GUI does not reliably block the caller on
+        # Windows. Ensure CI waits for the real process and reads its exit code.
+        self.assertIn("Start-Process -FilePath $exe -ArgumentList '--self-test' -PassThru", release)
+        self.assertIn('$process.WaitForExit(90000)', release)
+        self.assertIn('$exitCode = $process.ExitCode', release)
+        self.assertNotIn('$exitCode = $LASTEXITCODE', release)
         self.assertIn('Qt startup: ', (ROOT/'micro_downloader/ui.py').read_text())
 
     def _run_fake_selftest(self, launch):

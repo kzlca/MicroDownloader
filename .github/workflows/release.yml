@@ -93,8 +93,21 @@ jobs:
           $env:QT_QPA_PLATFORM = 'windows'
           # A PyInstaller --windowed exe has no console stderr. Save a report
           # before importing Qt and print it whether the process succeeds or not.
-          & .\dist\MicroDownloader\MicroDownloader.exe --self-test
-          $exitCode = $LASTEXITCODE
+          # Windows GUI-subsystem executables may return control to PowerShell
+          # immediately. In that case $LASTEXITCODE is null and the report is
+          # checked before the app has even run its self-test.
+          # Wait on the Process object and inspect its real exit code instead.
+          $exe = (Resolve-Path '.\dist\MicroDownloader\MicroDownloader.exe').Path
+          $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -PassThru
+          if (-not $process.WaitForExit(90000)) {
+            Write-Host 'ERROR: Windows GUI self-test exceeded 90 seconds.'
+            $process.Kill()
+            $process.WaitForExit()
+            $exitCode = 124
+          } else {
+            $exitCode = $process.ExitCode
+          }
+          Write-Host "Windows GUI self-test exit code: $exitCode"
           if (Test-Path $env:MICRO_DOWNLOADER_SELF_TEST_LOG) {
             Write-Host '------ Frozen GUI self-test diagnostic ------'
             Get-Content $env:MICRO_DOWNLOADER_SELF_TEST_LOG
