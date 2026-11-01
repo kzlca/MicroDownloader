@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print Markdown direct-download links for a published GitHub release.
 
-Example: python scripts/print_download_links.py YOUR_USERNAME/MicroDownloader 0.5.0
+Example: python scripts/print_download_links.py YOUR_USERNAME/MicroDownloader 0.5.1
 """
 import argparse
 
@@ -10,7 +10,7 @@ def markdown(repo: str, version: str) -> str:
     repo = repo.strip().strip('/')
     version = version.removeprefix('v')
     if not repo or repo.count('/') != 1 or not version or '/' in version:
-        raise ValueError('Use OWNER/REPOSITORY and a numeric version such as 0.5.0')
+        raise ValueError('Use OWNER/REPOSITORY and a numeric version such as 0.5.1')
     base = f'https://github.com/{repo}/releases/latest/download'
     names = [
         ('Windows 10/11 (x64)', f'MicroDownloader-{version}-windows-x64-Setup.exe'),
@@ -29,6 +29,6 @@ def markdown(repo: str, version: str) -> str:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('repo', help='OWNER/REPOSITORY, e.g. myname/MicroDownloader')
-    parser.add_argument('version', nargs='?', default='0.5.0', help='Release version')
+    parser.add_argument('version', nargs='?', default='0.5.1', help='Release version')
     a = parser.parse_args()
     print(markdown(a.repo, a.version))

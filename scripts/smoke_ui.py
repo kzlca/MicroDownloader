@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Real Qt regression checks: recover button, shortcut, resizing and migration UI."""
 import os
+import sys
 import tempfile
 from pathlib import Path
+
+# Running by filename (`python scripts/smoke_ui.py`) otherwise places
+# scripts/ rather than the repository root on sys.path.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 if os.name != 'nt':
     os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')

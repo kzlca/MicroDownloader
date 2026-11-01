@@ -26,18 +26,20 @@ Micro Downloader can identify sparse gaps, visualize them in **green (allocated)
 
 ## Downloads
 
-After the first successful GitHub Actions build publishes `v0.5.0`, download the native installer for your OS:
+[**Download installers from the latest GitHub Release**](https://github.com/kzlca/MicroDownloader/releases/latest)
 
-| Platform | Installer |
+The release pipeline publishes separate, native installer assets for each platform:
+
+| Platform | File in release assets |
 |---|---|
-| Windows 10/11 · x64 | [Windows setup wizard (.exe)](https://github.com/kzlca/MicroDownloader/releases/latest/download/MicroDownloader-0.5.0-windows-x64-Setup.exe) |
-| Arch Linux / Manjaro · x64 | [Pacman package (.pkg.tar.zst)](https://github.com/kzlca/MicroDownloader/releases/latest/download/MicroDownloader-0.5.0-linux-x64.pkg.tar.zst) |
-| Ubuntu / Debian · x64 | [Debian package (.deb)](https://github.com/kzlca/MicroDownloader/releases/latest/download/MicroDownloader-0.5.0-linux-x64.deb) |
-| Fedora / RPM · x64 | [RPM package (.rpm)](https://github.com/kzlca/MicroDownloader/releases/latest/download/MicroDownloader-0.5.0-linux-x64.rpm) |
+| Windows 10/11 · x64 | `MicroDownloader-0.5.1-windows-x64-Setup.exe` |
+| Arch Linux / Manjaro · x64 | `MicroDownloader-0.5.1-linux-x64.pkg.tar.zst` |
+| Ubuntu / Debian · x64 | `MicroDownloader-0.5.1-linux-x64.deb` |
+| Fedora / RPM · x64 | `MicroDownloader-0.5.1-linux-x64.rpm` |
 
-[**Browse all releases**](https://github.com/kzlca/MicroDownloader/releases) · [Verify checksums](https://github.com/kzlca/MicroDownloader/releases/latest)
+**The release page is the working entry point until v0.5.1 is actually published.** GitHub will only serve direct asset links once the Windows and Linux CI jobs succeed and upload the corresponding files. Each published GitHub Release contains direct per-platform links and SHA-256 checksums.
 
-**Note:** Download buttons become usable **only after the corresponding release assets have been uploaded**. Asset filenames include the version, so update these links on later releases. No Python/PySide6 installation is needed for packaged installers; Linux requires system `aria2` and `curl`. Windows Setup is an unsigned binary until code signing is configured, so Windows may display a security prompt.
+No Python/PySide6 installation is needed for packaged installers; Linux requires system `aria2` and `curl`. Windows Setup is an unsigned binary until code signing is configured, so Windows may display a security prompt.
 
 ## Features
 
@@ -79,10 +81,10 @@ The repository uses Python 3, **PySide6 Qt Widgets**, aria2's local JSON-RPC API
 python3 -m compileall -q micro_downloader run.py scripts
 python3 -m unittest discover -s tests -v
 # With PySide6 installed:
-QT_QPA_PLATFORM=offscreen python3 scripts/smoke_ui.py
+QT_QPA_PLATFORM=offscreen python3 -m scripts.smoke_ui
 ```
 
-On a push to `main`, GitHub Actions checks the project. On the `v0.5.0` tag, the release workflow builds the Windows Setup EXE and native Linux packages and attaches them to a GitHub Release. **The build workflow is provided, but published installers still need successful CI runs and real-system verification.** See [PUBLISHING.md](PUBLISHING.md).
+On a push to `main`, GitHub Actions checks the project. On the `v0.5.1` tag, the release workflow builds the Windows Setup EXE and native Linux packages and attaches them to a GitHub Release. **The build workflow is provided, but published installers still need successful CI runs and real-system verification.** See [PUBLISHING.md](PUBLISHING.md).
 
 ## Help and contributing
 

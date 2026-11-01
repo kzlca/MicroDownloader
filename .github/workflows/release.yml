@@ -54,14 +54,14 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Qt GUI regression (headless)
         if: runner.os == 'Linux'
-        run: QT_QPA_PLATFORM=offscreen python scripts/smoke_ui.py
+        run: QT_QPA_PLATFORM=offscreen python -m scripts.smoke_ui
       - name: Build native installable packages
         shell: bash
         run: |
           if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="0.5.0"
+            VERSION="0.5.1"
           fi
           python scripts/build_release.py --mode installer --version "$VERSION"
       - name: Linux frozen app launch smoke test
@@ -79,9 +79,29 @@ jobs:
         shell: pwsh
         run: |
           $env:MICRO_DOWNLOADER_DATA_DIR = Join-Path $env:RUNNER_TEMP 'micro-downloader-smoke'
-          .\dist\MicroDownloader\MicroDownloader.exe --self-test
-          if ($LASTEXITCODE -ne 0) { throw 'Frozen GUI failed' }
+          $env:MICRO_DOWNLOADER_SELF_TEST_LOG = Join-Path $env:RUNNER_TEMP 'micro-downloader-selftest.log'
+          # On CI there is no user desktop. Offscreen tests startup without
+          # requiring a visible session; packaged Qt plugins are still loaded.
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          # A PyInstaller --windowed exe has no console stderr. Save a report
+          # before importing Qt and print it whether the process succeeds or not.
+          & .\dist\MicroDownloader\MicroDownloader.exe --self-test
+          $exitCode = $LASTEXITCODE
+          if (Test-Path $env:MICRO_DOWNLOADER_SELF_TEST_LOG) {
+            Write-Host '------ Frozen GUI self-test diagnostic ------'
+            Get-Content $env:MICRO_DOWNLOADER_SELF_TEST_LOG
+          } else {
+            Write-Host 'No self-test report was written: executable failed before entrypoint.'
+          }
+          if ($exitCode -ne 0) { throw "Frozen GUI exited with code $exitCode" }
           if (-not (Get-ChildItem release -Filter '*-Setup.exe')) { throw 'Setup missing' }
+      - name: Upload Windows startup diagnostic when a job fails
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: micro-downloader-windows-selftest-log
+          path: ${{ runner.temp }}/micro-downloader-selftest.log
+          if-no-files-found: ignore
       - name: Upload native installer artifacts
         uses: actions/upload-artifact@v4
         with:

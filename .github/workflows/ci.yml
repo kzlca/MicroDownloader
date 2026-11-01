@@ -33,7 +33,7 @@ jobs:
       - name: Qt GUI smoke test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python scripts/smoke_ui.py
+        run: python -m scripts.smoke_ui
 
   windows-source:
     runs-on: windows-latest

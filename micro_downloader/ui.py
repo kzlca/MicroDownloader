@@ -78,7 +78,7 @@ def stat_card(label, value, note=''):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Micro Downloader v0.5.0 — Download & Recovery')
+        self.setWindowTitle('Micro Downloader v0.5.1 — Download & Recovery')
         self.setWindowIcon(QIcon(str(Path(__file__).parent / 'assets' / 'logo.png')))
         self.setMinimumSize(640, 480)
         self.resize(1250, 790)

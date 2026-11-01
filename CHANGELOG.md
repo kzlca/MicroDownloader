@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.1 — CI recovery candidate
+
+- Fixed GUI smoke-test import path for direct and module invocation on Linux.
+- Windows frozen GUI self-test now creates a diagnostic report before importing Qt, captures Python and Qt callback failures, and logs Qt messages for packaging failures.
+- Windows CI uses the offscreen Qt platform and prints self-test diagnostics on failure, instead of only reporting a generic exit code.
+- Added explicit diagnostics artifact upload for failed Windows smoke runs.
+- Prevented dead direct-download buttons on the repository home page before a release exists.
+- Added tests for workflow configuration and diagnostic logging.
+
+
 ## v0.5.0
 
 - Transfer card per-item action grid with responsive wrapping; matching right-click action menu on all card surfaces.
