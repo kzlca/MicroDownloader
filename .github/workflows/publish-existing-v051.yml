@@ -1,0 +1,76 @@
+name: Publish verified v0.5.1 installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download successful build artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/windows artifacts/linux
+
+          gh run download 41360538557 \
+            -R "$GITHUB_REPOSITORY" \
+            -n micro-downloader-windows \
+            -D artifacts/windows
+
+          gh run download 41360538557 \
+            -R "$GITHUB_REPOSITORY" \
+            -n micro-downloader-linux \
+            -D artifacts/linux
+
+      - name: Validate and prepare installers
+        run: |
+          set -euo pipefail
+
+          python3 scripts/prepare_release_assets.py \
+            --artifacts artifacts \
+            --out prepared \
+            --version 0.5.1
+
+          (cd prepared && sha256sum -c SHA256SUMS.txt)
+
+      - name: Upload installers and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG=v0.5.1
+
+          test "$(gh release view "$TAG" \
+            -R "$GITHUB_REPOSITORY" \
+            --json isDraft --jq '.isDraft')" = true
+
+          gh release upload "$TAG" prepared/* \
+            -R "$GITHUB_REPOSITORY" --clobber
+
+          for file in prepared/*; do
+            name="$(basename "$file")"
+            remote_size="$(gh release view "$TAG" \
+              -R "$GITHUB_REPOSITORY" \
+              --json assets \
+              --jq ".assets[] | select(.name == \"$name\") | .size")"
+
+            test "$remote_size" = "$(stat -c '%s' "$file")" || {
+              echo "Missing or mismatched asset: $name"
+              exit 1
+            }
+          done
+
+          gh release edit "$TAG" \
+            -R "$GITHUB_REPOSITORY" \
+            --draft=false --latest
+
+          echo "SUCCESS: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
