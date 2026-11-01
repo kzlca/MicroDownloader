@@ -1,0 +1,46 @@
+name: Quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install Qt runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-cursor0 libxkbcommon-x11-0 libegl1 libopengl0 zstd dpkg-dev
+      - name: Install minimal GUI dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile Python sources
+        run: python -m compileall -q micro_downloader run.py scripts
+      - name: Unit and recovery tests
+        run: python -m unittest discover -s tests -v
+      - name: Qt GUI smoke test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python scripts/smoke_ui.py
+
+  windows-source:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Compile sources on Windows
+        run: python -m compileall -q micro_downloader run.py scripts

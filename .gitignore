@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+release/
+*.spec
+*.log
+
+# Local user data and large downloaded parts (never publish these)
+*.rar
+*.7z
+*.part
+*.aria2
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+.env
+**/.venv/**
