@@ -26,7 +26,7 @@ Micro Downloader can identify sparse gaps, visualize them in **green (allocated)
 
 ## Downloads
 
-[**Download installers from the latest GitHub Release**](https://github.com/kzlca/MicroDownloader/releases/latest)
+[**Browse releases and download installers**](https://github.com/kzlca/MicroDownloader/releases)
 
 The release pipeline publishes separate, native installer assets for each platform:
 

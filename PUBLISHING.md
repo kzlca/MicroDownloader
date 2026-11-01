@@ -55,3 +55,22 @@ This is the only time the direct URLs below are guaranteed to exist: **after the
 - Windows binaries are unsigned and may show SmartScreen warnings.
 - Frozen Linux executables depend on the glibc compatibility of their build host.
 - Never commit credentials, real user databases, or downloaded archives.
+
+## Troubleshooting the previous Windows CI crash
+
+The previous Windows self-test forced `QT_QPA_PLATFORM=offscreen`, then logged
+`QFontDatabase: Cannot find font directory .../PySide6/lib/fonts` before exiting
+unsuccessfully. v0.5.1 hotfix 03 uses `QT_QPA_PLATFORM=windows` on the Windows
+runner so Qt uses Windows' installed fonts and the packaged Windows QPA plugin.
+It also records a checkpoint for each startup stage in the diagnostic artifact.
+This is a targeted change, not proof of a successful Windows run; the next
+Windows Actions job must pass before tagging the release.
+
+After a successful tagged build, verify all assets with:
+
+```bash
+gh release view v0.5.1 -R kzlca/MicroDownloader --json assets --jq '.assets[].name'
+```
+
+Do not make the README point directly to unverified release asset URLs. The
+Releases index link itself remains usable before the first release.

@@ -1108,18 +1108,43 @@ class MainWindow(QMainWindow):
 
 def launch(self_test=False):
     import sys
+
+    def checkpoint(stage):
+        # The Windows PyInstaller executable uses --windowed, so no console is
+        # available. Persist startup checkpoints for diagnosing CI failures.
+        if not self_test:
+            return
+        location = os.environ.get('MICRO_DOWNLOADER_SELF_TEST_LOG', '')
+        if not location:
+            return
+        try:
+            with open(location, 'a', encoding='utf-8') as f:
+                f.write('Qt startup: ' + stage + '\n')
+        except OSError:
+            pass
+
+    checkpoint('creating QApplication')
     app = QApplication(sys.argv[:1])
+    checkpoint('QApplication created')
     app.setApplicationName('Micro Downloader')
     app.setOrganizationName('Micro Downloader')
     app.setWindowIcon(QIcon(str(Path(__file__).parent / 'assets' / 'logo.png')))
+    checkpoint('constructing MainWindow')
     window = MainWindow()
+    checkpoint('MainWindow constructed')
     if self_test:
-        # Build smoke test: exercise actual Qt window construction then exit.
+        # Test the real GUI on the platform's native Qt backend. Keep the
+        # window open just long enough to initialize event-driven widgets.
         window.show()
+        checkpoint('window shown')
         def exit_test():
+            checkpoint('closing window')
             window.close()
             app.quit()
-        QTimer.singleShot(600, exit_test)
+        QTimer.singleShot(800, exit_test)
     else:
         window.show()
-    return app.exec()
+    checkpoint('entering Qt event loop')
+    result = app.exec()
+    checkpoint(f'Qt event loop returned {result}')
+    return result

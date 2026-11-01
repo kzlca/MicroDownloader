@@ -27,6 +27,11 @@ class ReleaseDiagnosticsTests(unittest.TestCase):
         self.assertIn('QT_QPA_PLATFORM', release)
         self.assertIn('micro-downloader-windows-selftest-log', release)
         self.assertIn('Get-Content $env:MICRO_DOWNLOADER_SELF_TEST_LOG', release)
+        # Windows must use its native Qt backend. PyInstaller's offscreen
+        # plugin may lack a usable font database on Windows runners.
+        self.assertIn("$env:QT_QPA_PLATFORM = 'windows'", release)
+        self.assertIn('Windows native Qt/font availability probe', release)
+        self.assertIn('Qt startup: ', (ROOT/'micro_downloader/ui.py').read_text())
 
     def _run_fake_selftest(self, launch):
         qtcore = types.ModuleType('PySide6.QtCore')
