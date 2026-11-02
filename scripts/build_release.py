@@ -97,7 +97,7 @@ def package_onefile(version, platform_name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode',choices=['installer','onedir','onefile','both'],default='installer')
-    parser.add_argument('--version', default='0.5.1')
+    parser.add_argument('--version', default='0.5.2')
     parser.add_argument('--system-tools',action='store_true',
                         help='Do not bundle aria2c on Windows (requires aria2 to be installed there).')
     args = parser.parse_args()
@@ -116,7 +116,7 @@ def main():
                 raise SystemExit('Inno Setup compiler ISCC.exe missing. Install Inno Setup 6.6 or newer.')
             version = args.version.lstrip('v')
             if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-                raise SystemExit('Windows installer needs a numeric version such as 0.5.1')
+                raise SystemExit('Windows installer needs a numeric version such as 0.5.2')
             (ROOT / 'installer' / 'version.iss').write_text(
                 f'#define AppVersion "{version}"\n', encoding='utf-8')
             subprocess.run([str(compiler), str(ROOT / 'installer' / 'MicroDownloader.iss')], cwd=ROOT, check=True)

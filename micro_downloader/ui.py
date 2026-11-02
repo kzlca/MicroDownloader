@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from .engine import AriaController, AriaError
+from .backend_supervisor import BackendSupervisor
 from .store import Store
 from .sparse import inspect, format_bytes
 from .recovery import RecoveryWorker
@@ -78,7 +79,7 @@ def stat_card(label, value, note=''):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Micro Downloader v0.5.1 — Download & Recovery')
+        self.setWindowTitle('Micro Downloader v0.5.2 — Download & Recovery')
         self.setWindowIcon(QIcon(str(Path(__file__).parent / 'assets' / 'logo.png')))
         self.setMinimumSize(640, 480)
         self.resize(1250, 790)
@@ -86,7 +87,9 @@ class MainWindow(QMainWindow):
         self.language = self.store.settings('language', 'en')
         if self.language not in CATALOG: self.language = 'en'
         self.aria = AriaController(self.store.home)
-        self.aria_error = ''
+        self.supervisor = BackendSupervisor(self.aria, self.store.settings('parallel', 3),
+                                            self.store.settings('speed_kib', 0))
+        self.aria_error = ''  # Status message; never a permanent failure latch.
         self.recovery_worker = None
         self.recovery_id = None
         self.archive_worker = None
@@ -98,18 +101,15 @@ class MainWindow(QMainWindow):
         self._ready = False
         self.setup_ui()
         self.setup_shortcuts()
-        try:
-            self.aria.start(self.store.settings('parallel',3), self.store.settings('speed_kib',0))
-        except AriaError as exc:
-            self.aria_error = str(exc)
         self.restore_queue()
         self.refresh()
         self._ready = True
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(1400)
-        if self.aria_error:
-            QTimer.singleShot(250, lambda: self.statusBar().showMessage('aria2 unavailable: ' + self.aria_error, 15000))
+        # Start after the window is constructed; never block the GUI waiting
+        # for the first Windows antivirus scan or the aria2 RPC port.
+        QTimer.singleShot(0, self._sync_engine)
 
     def setup_ui(self):
         self.setStyleSheet(DARK)
@@ -363,6 +363,15 @@ class MainWindow(QMainWindow):
         self.apply_language()
 
     def setup_shortcuts(self):
+        engine_menu = self.menuBar().addMenu(translate('Engine', self.language))
+        self.engine_menu = engine_menu
+        self.engine_state_action = engine_menu.addAction('aria2: connecting…')
+        self.engine_state_action.setEnabled(False)
+        engine_menu.addSeparator()
+        restart = QAction(translate('Restart download engine', self.language), self)
+        self.engine_restart_action = restart
+        restart.triggered.connect(self.restart_engine)
+        engine_menu.addAction(restart)
         for label, combo, slot in [
                 ('New download', 'Ctrl+N', self.add_download),
                 ('Recover file', 'Ctrl+R', self.add_recovery),
@@ -484,6 +493,9 @@ class MainWindow(QMainWindow):
         self._compact_layout = None
         self.update_responsive_layout()
         translate_tree(self, self.language)
+        if hasattr(self, 'engine_menu'):
+            self.engine_menu.setTitle(translate('Engine', self.language))
+            self.engine_restart_action.setText(translate('Restart download engine', self.language))
         apply_ui_font(QApplication.instance(), self.language)
         self.language_combo.setToolTip(translate('Language', self.language))
         self.language_button.setToolTip(translate('Language', self.language))
@@ -514,21 +526,111 @@ class MainWindow(QMainWindow):
         except (OSError, RuntimeError):
             return None
 
+    def _engine_log(self, detail):
+        """Persist backend diagnostics without exposing download URLs/tokens."""
+        try:
+            path = self.store.home / 'backend.log'
+            if path.exists() and path.stat().st_size > 2_000_000:
+                path.replace(path.with_suffix('.log.1'))
+            with path.open('a', encoding='utf-8') as f:
+                f.write(time.strftime('%Y-%m-%d %H:%M:%S ') + str(detail)[:500] + '\n')
+        except OSError:
+            pass
+
+    def _invalidate_session_gids(self, restart=False):
+        """Old RPC GIDs are invalid after the owned aria2 process exits."""
+        count = 0
+        for job in self.store.all_jobs():
+            if job['kind'] != 'download':
+                continue
+            fields = {}
+            if job['gid']:
+                fields['gid'] = ''
+            if job['status'] in ('active', 'waiting'):
+                fields.update(status='queued', speed=0, error='')
+                count += 1
+            if fields:
+                self.store.update(job['id'], **fields)
+        if restart and count:
+            self._engine_log(f'Preserved and requeued {count} interrupted downloads; recovery tasks untouched.')
+        return count
+
     def restore_queue(self):
         for job in self.store.all_jobs():
-            if job['status'] in ('active','waiting','checking','recovering'):
-                self.store.update(job['id'], status='paused' if job['kind'] == 'recovery' else 'queued', gid='')
-        if not self.aria_error:
-            for job in self.store.all_jobs():
-                if job['kind'] == 'download' and job['status'] == 'queued':
-                    self.launch_download(job['id'])
+            if job['kind'] == 'recovery' and job['status'] in ('recovering','checking'):
+                self.store.update(job['id'], status='paused', speed=0)
+        self._invalidate_session_gids()
+
+    def _start_queued_downloads(self):
+        if not self.supervisor.ready:
+            return
+        for job in self.store.all_jobs():
+            if job['kind'] != 'download' or job['status'] != 'queued':
+                continue
+            # GID can be retained after a temporary RPC disconnect: unpause
+            # the same transfer rather than accidentally adding a duplicate.
+            if not self.supervisor.ready:
+                self.store.update(job['id'], status='queued', speed=0)
+                self.statusBar().showMessage('Download queued; waiting for aria2 to connect.', 6000)
+                self.refresh()
+                return
+            if job['gid']:
+                try:
+                    self.aria.unpause(job['gid'])
+                    self.store.update(job['id'], status='waiting', error='')
+                    continue
+                except AriaError:
+                    # A missing GID cannot be used after a process restart.
+                    self.store.update(job['id'], gid='')
+            self.launch_download(job['id'])
+        self.refresh()
+
+    def _sync_engine(self):
+        event = self.supervisor.step()
+        self.engine_state_action.setText('aria2: ' + self.supervisor.state)
+        if event == 'lost':
+            self._invalidate_session_gids(restart=True)
+            self._engine_log('aria2 process exited; resuming safely after automatic restart.')
+            self.statusBar().showMessage('Download engine stopped; reconnecting automatically.', 12000)
+        elif event in ('ready', 'reconnected'):
+            self.aria_error = ''
+            self._engine_log('aria2 RPC ready (' + event + ').')
+            self.statusBar().showMessage('Download engine connected.', 6000)
+            self._start_queued_downloads()
+        elif event == 'starting':
+            self.statusBar().showMessage('Starting aria2 download engine…', 5000)
+        elif event in ('retry', 'slow', 'disconnected'):
+            self.aria_error = self.supervisor.error
+            self._engine_log(f'aria2 {event}: {self.aria_error}')
+            msg = ('aria2 is starting slowly; still checking.' if event == 'slow' else
+                   'Download engine reconnecting: ' + self.aria_error)
+            self.statusBar().showMessage(msg, 12000)
+        # Live RPC outages never cause automatic termination of active aria2.
+
+    def restart_engine(self):
+        """Explicit manual restart, including a warning for active transfers."""
+        active = any(j['kind'] == 'download' and j['status'] in ('active', 'waiting')
+                     for j in self.store.all_jobs())
+        if active and QMessageBox.question(
+                self, 'Restart download engine',
+                'Active transfers will be interrupted and resumed using aria2 control files. Continue?'
+        ) != QMessageBox.Yes:
+            return
+        self._engine_log('User requested download engine restart.')
+        self.aria.stop()  # graceful aria2 shutdown saves its .aria2 state
+        self._invalidate_session_gids(restart=True)
+        self.supervisor.reset()
+        self.aria_error = ''
+        self._sync_engine()
 
     def launch_download(self, jid):
         job = self.store.get(jid)
         if not job or job['kind'] != 'download':
             return
-        if self.aria_error:
-            self.store.update(jid, status='failed', error=self.aria_error)
+        if not self.supervisor.ready or not self.aria.running:
+            # Keep the requested download queued until aria2 RPC is ready.
+            # An initial Windows launch failure is NOT a download failure.
+            self.store.update(jid, status='queued', speed=0)
             return
         if not job['url']:
             self.store.update(jid, status='paused', error='Missing URL')
@@ -545,19 +647,28 @@ class MainWindow(QMainWindow):
             self.store.update(jid, gid=gid, status='waiting', error='')
             self.store.log(jid, 'Added to aria2 queue. Download URL safely saved.')
         except (OSError, AriaError) as exc:
-            self.store.update(jid, status='failed', error=str(exc))
-            self.store.log(jid, str(exc), 'error')
+            if not self.aria.running:
+                # Process died between readiness check and addUri: not a URL failure.
+                self.store.update(jid, gid='', status='queued', speed=0)
+                self._engine_log('Download deferred after aria2 process exit: ' + str(exc))
+            else:
+                # Do not automatically duplicate an addUri after an ambiguous RPC
+                # failure; the remote engine may have accepted the first request.
+                self.store.update(jid, status='failed', error=str(exc))
+                self.store.log(jid, str(exc), 'error')
 
     def tick(self):
+        self._sync_engine()
         any_changed = False
         download_speed = 0
-        if not self.aria_error:
+        if self.supervisor.ready:
             for job in self.store.all_jobs():
                 if job['kind'] != 'download' or not job['gid'] or job['status'] not in ('waiting','active','paused'):
                     continue
                 try:
                     data = self.aria.status(job['gid'])
-                except AriaError:
+                except AriaError as exc:
+                    self.supervisor.note_rpc_failure(exc)
                     continue
                 st = {'active':'active','waiting':'waiting','paused':'paused',
                       'complete':'complete','error':'failed','removed':'failed'}.get(data.get('status'),'failed')
@@ -849,6 +960,12 @@ class MainWindow(QMainWindow):
         else:
             if job['status'] in ('active','waiting','complete'):
                 return
+            if not self.supervisor.ready:
+                self.store.update(job['id'], status='queued', speed=0, error='')
+                self.statusBar().showMessage('Download queued until aria2 connects.', 7000)
+                self._sync_engine()
+                self.refresh()
+                return
             if job['gid']:
                 try:
                     self.aria.unpause(job['gid'])
@@ -937,6 +1054,9 @@ class MainWindow(QMainWindow):
         if job['kind'] == 'recovery' and self.recovery_worker and self.recovery_id == job['id']:
             self.recovery_worker.cancel()
             self.message('Stopping safely after current request. Completed ranges remain on disk.')
+        elif job['kind']=='download' and not self.supervisor.ready:
+            self.store.update(job['id'], status='paused', speed=0)
+            self.refresh()
         elif job['kind']=='download' and job['gid']:
             try:
                 self.aria.pause(job['gid'])
@@ -1002,7 +1122,11 @@ class MainWindow(QMainWindow):
     def pause_all(self):
         count=0
         for job in self.store.all_jobs():
-            if job['kind']=='download' and job['status'] in ('waiting','active') and job['gid']:
+            if job['kind']=='download' and job['status'] in ('queued','waiting','active'):
+                if not self.supervisor.ready or not job['gid']:
+                    self.store.update(job['id'], status='paused', speed=0)
+                    count += 1
+                    continue
                 try:
                     self.aria.pause(job['gid'])
                     self.store.update(job['id'], status='paused', speed=0)
@@ -1018,6 +1142,10 @@ class MainWindow(QMainWindow):
         count=0
         for job in self.store.all_jobs():
             if job['kind']=='download' and job['status'] in ('queued','paused','failed'):
+                if not self.supervisor.ready:
+                    self.store.update(job['id'], status='queued', speed=0, error='')
+                    count += 1
+                    continue
                 if job['gid']:
                     try:
                         self.aria.unpause(job['gid'])
@@ -1033,7 +1161,8 @@ class MainWindow(QMainWindow):
 
     def speed_changed(self, value):
         self.store.set_setting('speed_kib', value)
-        if self._ready and not self.aria_error:
+        self.supervisor.speed_kib = value
+        if self._ready and self.supervisor.ready:
             try:
                 self.aria.set_limits(self.store.settings('parallel',3), value)
             except AriaError as exc:
@@ -1049,7 +1178,9 @@ class MainWindow(QMainWindow):
             self.speed.blockSignals(True)
             self.speed.setValue(self.store.settings('speed_kib',0))
             self.speed.blockSignals(False)
-            if not self.aria_error:
+            self.supervisor.parallel = self.store.settings('parallel', 3)
+            self.supervisor.speed_kib = self.store.settings('speed_kib', 0)
+            if self.supervisor.ready:
                 try:
                     self.aria.set_limits(self.store.settings('parallel',3), self.store.settings('speed_kib',0))
                 except AriaError as exc:

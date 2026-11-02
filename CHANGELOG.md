@@ -1,3 +1,31 @@
+## v0.5.2 — Reliable aria2 startup (2026-11-02)
+
+- Non-blocking Windows/Linux aria2 startup: a first-run error no longer remains latched until app restart.
+- Automatic launch retries with bounded backoff and RPC readiness probing.
+- Preserve queued download tasks while the engine is starting or reconnecting.
+- Requeue interrupted downloads safely after the owned aria2 process exits; never overwrite existing files without aria2 resume metadata.
+- Never kill a live aria2 process solely because of a transient RPC outage.
+- Manual **Engine → Restart download engine** action, with confirmation if transfers are active.
+- Local `backend.log` diagnostics in the application's user-data folder.
+- Added an end-to-end localhost aria2 download test for the Windows bundled backend in GitHub Actions.
+- GitHub Release workflow normalizes artifacts from Windows/Linux separately before verifying checksums and publishing all four installers.
+
+**Limitations:** Recovery from an OS crash still depends on aria2's control files, and no startup scheme can eliminate all antivirus or network failures. Windows runtime needs native validation before broad distribution.
+
+## v0.5.2 — Reliable aria2 startup (2026-11-02)
+
+- Non-blocking Windows/Linux aria2 startup: no longer latch a startup error until app restart.
+- Automatic launch retries with bounded backoff and RPC readiness probing.
+- Preserve queued download tasks while the engine is starting or reconnecting.
+- Requeue interrupted downloads safely after the owned aria2 process exits; never overwrite existing files without aria2 resume metadata.
+- Never kill a live aria2 process solely because of a transient RPC outage.
+- Manual **Engine → Restart download engine** action, with confirmation if transfers are active.
+- Local `backend.log` diagnostics in the application's user-data folder.
+- Added an end-to-end localhost aria2 download test for the Windows bundled backend in GitHub Actions.
+- GitHub Release workflow now normalizes artifacts from Windows/Linux separately before verifying checksums and publishing all four installers.
+
+**Limitations:** Recovery from an OS crash still depends on aria2's control files, and no startup scheme can eliminate all antivirus or network failures. Windows runtime must be validated with a release candidate before recommending broad adoption.
+
 # Changelog
 
 ## v0.5.1 — CI recovery candidate

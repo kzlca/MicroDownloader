@@ -10,6 +10,7 @@ from pathlib import Path
 LANGUAGES = {
     'en': {'name': 'English', 'rtl': False, 'strings': {}},
     'fa': {'name': 'فارسی', 'rtl': True, 'strings': {
+        'Engine':'موتور دانلود', 'Restart download engine':'راه‌اندازی دوباره موتور دانلود',
         'All transfers':'همه انتقال‌ها', 'Downloading':'در حال دانلود',
         'Paused & queued':'متوقف‌شده و در صف', 'Completed':'تکمیل‌شده',
         'Recovery lab':'بازیابی فایل', 'Failed':'ناموفق',
@@ -88,6 +89,7 @@ LANGUAGES = {
         'Start':'شروع',
     }},
     'tr': {'name': 'Türkçe', 'rtl': False, 'strings': {
+        'Engine':'İndirme motoru', 'Restart download engine':'İndirme motorunu yeniden başlat',
         'All transfers':'Tüm aktarımlar', 'Downloading':'İndiriliyor',
         'Paused & queued':'Duraklatıldı / Sırada', 'Completed':'Tamamlandı',
         'Recovery lab':'Dosya kurtarma', 'Failed':'Başarısız',

@@ -1,4 +1,4 @@
-# Native installer builds — v0.5.1
+# Native installer builds — v0.5.2
 
 Release default is **installable software**, not portable ZIP/single-ELF downloads.
 
@@ -11,7 +11,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 $env:MICRO_DOWNLOADER_ARIA2_BIN = 'C:\path\to\aria2c.exe'
 $env:MICRO_DOWNLOADER_7ZIP_DIR = 'C:\Program Files\7-Zip'
-.\.venv\Scripts\python.exe scripts\build_release.py --mode installer --version 0.5.1
+.\.venv\Scripts\python.exe scripts\build_release.py --mode installer --version 0.5.2
 ```
 
 The Inno Setup compiler (`ISCC.exe`) must be installed. The Setup executable appears in `release/`. The wizard uses a user-level install folder and preserves `%LOCALAPPDATA%\MicroDownloader` on uninstall. A Windows release from CI bundles `aria2c.exe` and `7z.exe` / `7z.dll`, when provided by the setup workflow.
@@ -23,7 +23,7 @@ Use Ubuntu 22.04 x64 for compatibility with older glibc (other distributions req
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-build.txt
-.venv/bin/python scripts/build_release.py --mode installer --version 0.5.1
+.venv/bin/python scripts/build_release.py --mode installer --version 0.5.2
 ```
 
 `release/` contains `.deb`, `.rpm`, and `.pkg.tar.zst` when their packaging utilities are available. All install to `/opt/micro-downloader` and register `/usr/share/applications/micro-downloader.desktop` plus an icon in hicolor. System `aria2` and `curl` are package dependencies. Archive checking additionally requires 7-Zip. Linux packages should be tested on real distributions before publication; a Qt ELF built on one distro can still have incompatible native libraries elsewhere.
@@ -44,7 +44,7 @@ For small Persian text, Amiri is preferred if already installed. This distributi
 
 ## Publish all packages and link directly from GitHub
 
-See **[PUBLISHING.md](PUBLISHING.md)** for current, tested-command instructions for tagging v0.5.1, automatic release uploads, and the correct installer names. Do not use old v0.4.1 tags: a Release is published only after a successful tag-triggered workflow.
+See **[PUBLISHING.md](PUBLISHING.md)** for current, tested-command instructions for tagging v0.5.2, automatic release uploads, and the correct installer names. Do not use old v0.4.1 tags: a Release is published only after a successful tag-triggered workflow.
 
 ## Existing installations
 

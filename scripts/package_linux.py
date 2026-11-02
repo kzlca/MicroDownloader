@@ -163,7 +163,7 @@ cp -a "{stage / 'usr'}" %{{buildroot}}/
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--version',default='0.5.1')
+    parser.add_argument('--version',default='0.5.2')
     parser.add_argument('--dist',type=Path,default=ROOT/'dist/MicroDownloader')
     args=parser.parse_args()
     version=args.version.lstrip('v')

@@ -35,6 +35,11 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m scripts.smoke_ui
 
+      - name: GUI download engine retry regression
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m scripts.smoke_backend_ui
+
   windows-source:
     runs-on: windows-latest
     steps:

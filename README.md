@@ -32,12 +32,12 @@ The release pipeline publishes separate, native installer assets for each platfo
 
 | Platform | File in release assets |
 |---|---|
-| Windows 10/11 · x64 | `MicroDownloader-0.5.1-windows-x64-Setup.exe` |
-| Arch Linux / Manjaro · x64 | `MicroDownloader-0.5.1-linux-x64.pkg.tar.zst` |
-| Ubuntu / Debian · x64 | `MicroDownloader-0.5.1-linux-x64.deb` |
-| Fedora / RPM · x64 | `MicroDownloader-0.5.1-linux-x64.rpm` |
+| Windows 10/11 · x64 | `MicroDownloader-0.5.2-windows-x64-Setup.exe` |
+| Arch Linux / Manjaro · x64 | `MicroDownloader-0.5.2-linux-x64.pkg.tar.zst` |
+| Ubuntu / Debian · x64 | `MicroDownloader-0.5.2-linux-x64.deb` |
+| Fedora / RPM · x64 | `MicroDownloader-0.5.2-linux-x64.rpm` |
 
-**The release page is the working entry point until v0.5.1 is actually published.** GitHub will only serve direct asset links once the Windows and Linux CI jobs succeed and upload the corresponding files. Each published GitHub Release contains direct per-platform links and SHA-256 checksums.
+**Download installers from the latest published release.** GitHub will only serve direct asset links once the Windows and Linux CI jobs succeed and upload the corresponding files. Each published GitHub Release contains direct per-platform links and SHA-256 checksums.
 
 No Python/PySide6 installation is needed for packaged installers; Linux requires system `aria2` and `curl`. Windows Setup is an unsigned binary until code signing is configured, so Windows may display a security prompt.
 
@@ -84,10 +84,18 @@ python3 -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen python3 -m scripts.smoke_ui
 ```
 
-On a push to `main`, GitHub Actions checks the project. On the `v0.5.1` tag, the release workflow builds the Windows Setup EXE and native Linux packages and attaches them to a GitHub Release. **The build workflow is provided, but published installers still need successful CI runs and real-system verification.** See [PUBLISHING.md](PUBLISHING.md).
+On a push to `main`, GitHub Actions checks the project. On the `v0.5.2` tag, the release workflow builds the Windows Setup EXE and native Linux packages and attaches them to a GitHub Release. **The build workflow is provided, but published installers still need successful CI runs and real-system verification.** See [PUBLISHING.md](PUBLISHING.md).
 
 ## Help and contributing
 
 Issues and feature requests: [GitHub Issues](https://github.com/kzlca/MicroDownloader/issues). Please include operating system, version, reproduction steps, and sanitized logs. Pull requests, localization contributions, security reviews, Windows NTFS verification and accessibility improvements are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Created and maintained as a portfolio project by [@kzlca](https://github.com/kzlca). Licensed under the [MIT License](LICENSE).
+
+### Troubleshooting the download engine
+
+The aria2 backend starts in the background. Downloads remain queued until its loopback JSON-RPC endpoint is ready. Windows first launches can be slower due to security scanning; the app retries automatically.
+
+Use **Engine → Restart download engine** to request a graceful backend restart. When downloads are active the app asks for confirmation. See `backend.log` and `aria2.log` in your user data directory (`%LOCALAPPDATA%\MicroDownloader` on Windows, `~/.local/share/micro-downloader` on Linux).
+
+**Never delete `.aria2` control files while transfers are incomplete.** Existing files without aria2 resume metadata are not overwritten; use Recovery Lab instead.
